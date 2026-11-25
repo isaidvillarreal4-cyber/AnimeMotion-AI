@@ -2,108 +2,314 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AnimeMotion AI</title>
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#0c1020;color:#fff;font-family:Arial,sans-serif}
-header{padding:22px;background:linear-gradient(120deg,#6d28d9,#db2777)}
-header h1{margin:0;font-size:26px}
-header p{margin:8px 0 0;color:#eee}
+body{margin:0;background:#10121b;color:#f1f3f9;font-family:Arial,sans-serif}
+header{padding:22px;background:#181c2b;border-bottom:1px solid #30364c}
+header h1{margin:0;color:#a5b4fc}
+header p{color:#aab0c5}
 main{max-width:850px;margin:auto;padding:20px}
-.card{background:#171c31;border:1px solid #303957;border-radius:18px;padding:20px;margin-bottom:18px}
-label{display:block;margin:15px 0 8px;font-weight:bold}
-textarea,select{width:100%;padding:14px;border-radius:12px;border:1px solid #384363;background:#10162a;color:white;font-size:15px}
-textarea{min-height:140px}
-button{width:100%;padding:15px;border:0;border-radius:12px;background:linear-gradient(90deg,#8b5cf6,#ec4899);color:white;font-size:16px;font-weight:bold;margin-top:18px}
-.small{color:#a5b4fc;font-size:13px}
-#status{margin-top:15px;white-space:pre-wrap;color:#c4b5fd}
-.nav{display:flex;gap:8px;margin-top:20px}
-.nav button{margin:0;background:#282d48}
-.scene{border:1px solid #414668;padding:15px;border-radius:14px;margin-top:12px}
-footer{text-align:center;padding:20px;color:#9ba8c7}
+.card{background:#1b2030;border:1px solid #30364c;border-radius:18px;padding:20px;margin:16px 0}
+h2,h3{color:#c7d2fe}
+label{display:block;margin:15px 0 7px;font-weight:bold}
+input,textarea,select{width:100%;padding:12px;border-radius:10px;border:1px solid #444b64;background:#111522;color:white}
+textarea{min-height:130px;resize:vertical}
+button{padding:13px;border:0;border-radius:12px;background:#6366f1;color:white;font-weight:bold;margin-top:15px;width:100%;cursor:pointer}
+button.secondary{background:#343b55}
+button.danger{background:#9b303b}
+.small{color:#aab0c5;font-size:13px}
+.preview{width:100%;max-height:300px;object-fit:contain;border-radius:12px;margin-top:10px;background:#111522}
+.character{border:1px solid #38415b;border-radius:14px;padding:15px;margin-top:15px}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row button{flex:1}
+.hidden{display:none!important}
+.scene{padding:15px;background:#252b40;border-radius:12px;margin:12px 0}
+a{color:#a5b4fc}
 </style>
 </head>
 <body>
 <header>
 <h1>AnimeMotion AI</h1>
-<p>Tu imaginación crea el anime.</p>
-<div class="nav">
-<button onclick="show('crear')">Crear</button>
-<button onclick="show('escenas')">Escenas</button>
-<button onclick="show('proyecto')">Proyecto</button>
-</div>
+<p>Tu estudio personal de anime 2D</p>
 </header>
 <main id="app"></main>
-<footer>AnimeMotion AI · Estudio de animación 2D</footer>
 <script>
 const app=document.getElementById('app');
+let current=null;
 
-function show(page){
-if(page==='crear'){
-app.innerHTML=`
-<div class="card">
-<h2>Crear escena de anime</h2>
-<p class="small">Describe lo que quieres que suceda.</p>
-<label>Descripción</label>
-<textarea id="prompt" placeholder="Un estudiante sentado junto a la ventana, observa los árboles rosados..."></textarea>
-<label>Estilo</label>
-<select id="style">
-<option>Anime japonés 2D</option>
-<option>Anime cinematográfico</option>
-<option>Anime escolar</option>
-<option>Anime acuarela</option>
-<option>Anime retro</option>
-</select>
-<label>Duración</label>
-<select id="duration">
-<option>5 segundos</option>
-<option selected>10 segundos</option>
-<option>15 segundos</option>
-<option>30 segundos</option>
-<option>1 minuto</option>
-</select>
-<label>Imagen de referencia</label>
-<input id="image" type="file" accept="image/*">
-<button onclick="prepare()">Preparar escena</button>
-<div id="status"></div>
-</div>`;
-}
-else if(page==='escenas'){
-app.innerHTML=`
-<div class="card">
-<h2>Storyboard</h2>
-<div class="scene"><h3>Escena 1 · El salón</h3><p>El profesor explica mientras los estudiantes escuchan.</p><p class="small">10 segundos</p></div>
-<div class="scene"><h3>Escena 2 · La ventana</h3><p>El estudiante observa los árboles de flores rosadas.</p><p class="small">10 segundos</p></div>
-<div class="scene"><h3>Escena 3 · Un suspiro</h3><p>Apoya su cabeza en la mano y vuelve a mirar afuera.</p><p class="small">10 segundos</p></div>
-<button onclick="show('crear')">Crear otra escena</button>
-</div>`;
-}
-else{
-app.innerHTML=`
-<div class="card">
-<h2>Mi proyecto</h2>
-<div class="scene">
-<h3>Mi primer anime</h3>
-<p>Proyecto de animación 2D</p>
-<p class="small">Formato: 16:9</p>
-<p class="small">Estado: Proyecto inicial</p>
-</div>
-<button onclick="show('crear')">Continuar proyecto</button>
-</div>`;
-}
+const DB_NAME='AnimeMotionProjects';
+let db;
+
+function openDB(){
+ return new Promise((resolve,reject)=>{
+  const r=indexedDB.open(DB_NAME,1);
+  r.onupgradeneeded=()=>{
+   r.result.createObjectStore('projects',{keyPath:'id'});
+  };
+  r.onsuccess=()=>{db=r.result;resolve(db)};
+  r.onerror=()=>reject(r.error);
+ });
 }
 
-function prepare(){
-let p=document.getElementById('prompt').value.trim();
-let status=document.getElementById('status');
-if(!p){status.textContent='Escribe primero tu escena.';return;}
-status.textContent='Escena preparada\\n\\n'+p+
-'\\n\\nEstilo: '+document.getElementById('style').value+
-'\\nDuración: '+document.getElementById('duration').value+
-'\\n\\nEl motor de animación real se conectará posteriormente.';
+function store(data){
+ return new Promise((resolve,reject)=>{
+  const t=db.transaction('projects','readwrite');
+  t.objectStore('projects').put(data);
+  t.oncomplete=()=>resolve();
+  t.onerror=()=>reject(t.error);
+ });
 }
-show('crear');
+
+function getAll(){
+ return new Promise((resolve,reject)=>{
+  const t=db.transaction('projects','readonly');
+  const r=t.objectStore('projects').getAll();
+  r.onsuccess=()=>resolve(r.result);
+  r.onerror=()=>reject(r.error);
+ });
+}
+
+function getOne(id){
+ return new Promise((resolve,reject)=>{
+  const t=db.transaction('projects','readonly');
+  const r=t.objectStore('projects').get(id);
+  r.onsuccess=()=>resolve(r.result);
+  r.onerror=()=>reject(r.error);
+ });
+}
+
+function remove(id){
+ return new Promise((resolve,reject)=>{
+  const t=db.transaction('projects','readwrite');
+  t.objectStore('projects').delete(id);
+  t.oncomplete=()=>resolve();
+  t.onerror=()=>reject(t.error);
+ });
+}
+
+function fileData(file){
+ if(!file)return Promise.resolve(null);
+ return new Promise((resolve,reject)=>{
+  const r=new FileReader();
+  r.onload=()=>resolve(r.result);
+  r.onerror=()=>reject(r.error);
+  r.readAsDataURL(file);
+ });
+}
+
+function home(){
+ current=null;
+ app.innerHTML=`
+ <div class="card">
+ <h2>Bienvenido a AnimeMotion AI</h2>
+ <p>Organiza tus personajes, escenarios y escenas para crear tu propio anime.</p>
+ <button onclick="newProject()">+ Crear nuevo proyecto</button>
+ </div>
+ <div class="card">
+ <h2>Mis proyectos</h2>
+ <div id="projects">Cargando proyectos...</div>
+ </div>`;
+ listProjects();
+}
+
+async function listProjects(){
+ const box=document.getElementById('projects');
+ if(!box)return;
+ const projects=await getAll();
+ if(!projects.length){
+  box.innerHTML='<p class="small">Todavía no tienes proyectos. Crea tu primera historia.</p>';
+  return;
+ }
+ box.innerHTML=projects.map(p=>`
+ <div class="scene">
+ <h3>${escapeHTML(p.name)}</h3>
+ <p class="small">Proyecto de anime 2D</p>
+ <button onclick="openProject('${p.id}')">Abrir proyecto</button>
+ <button class="danger" onclick="deleteProject('${p.id}')">Eliminar proyecto</button>
+ </div>`).join('');
+}
+
+function newProject(){
+ app.innerHTML=`
+ <div class="card">
+ <h2>Crear nuevo proyecto</h2>
+ <label>Nombre de tu anime</label>
+ <input id="name" placeholder="Ejemplo: Malasancera">
+ <div class="character">
+ <h3>Protagonista 1</h3>
+ <label>Imagen del personaje</label>
+ <input id="char1" type="file" accept="image/*">
+ <div id="preview1"></div>
+ <label>Nombre del personaje</label>
+ <input id="charname1" placeholder="Nombre">
+ </div>
+ <div class="character">
+ <h3>Protagonista 2</h3>
+ <label>Imagen del personaje</label>
+ <input id="char2" type="file" accept="image/*">
+ <div id="preview2"></div>
+ <label>Nombre del personaje</label>
+ <input id="charname2" placeholder="Nombre">
+ </div>
+ <button onclick="createProject()">Crear proyecto</button>
+ <button class="secondary" onclick="home()">Volver</button>
+ </div>`;
+ previewUpload('char1','preview1');
+ previewUpload('char2','preview2');
+}
+
+function previewUpload(inputId,previewId){
+ document.getElementById(inputId).addEventListener('change',async e=>{
+  const f=e.target.files[0];
+  const box=document.getElementById(previewId);
+  if(!f){box.innerHTML='';return;}
+  if(!f.type.startsWith('image/')){
+   box.innerHTML='<p>Selecciona una imagen.</p>';
+   return;
+  }
+  const data=await fileData(f);
+  box.innerHTML='<img class="preview" src="'+data+'">';
+ });
+}
+
+async function createProject(){
+ const name=document.getElementById('name').value.trim();
+ if(!name){alert('Escribe el nombre del proyecto.');return;}
+ const f1=document.getElementById('char1').files[0];
+ const f2=document.getElementById('char2').files[0];
+ if(!f1||!f2){alert('Sube las imágenes de los dos protagonistas.');return;}
+ const project={
+  id:Date.now().toString(),
+  name,
+  char1:await fileData(f1),
+  charname1:document.getElementById('charname1').value.trim(),
+  char2:await fileData(f2),
+  charname2:document.getElementById('charname2').value.trim(),
+  scenes:[]
+ };
+ await store(project);
+ openProject(project.id);
+}
+
+async function openProject(id){
+ current=await getOne(id);
+ if(!current)return;
+ workspace();
+}
+
+function workspace(){
+ app.innerHTML=`
+ <div class="card">
+ <div class="row">
+ <button class="secondary" onclick="home()">Mis proyectos</button>
+ </div>
+ <h2>${escapeHTML(current.name)}</h2>
+ <h3>Protagonistas</h3>
+ <div class="row">
+ <div style="flex:1;min-width:130px">
+ <img class="preview" src="${current.char1}">
+ <p>${escapeHTML(current.charname1||'Protagonista 1')}</p>
+ </div>
+ <div style="flex:1;min-width:130px">
+ <img class="preview" src="${current.char2}">
+ <p>${escapeHTML(current.charname2||'Protagonista 2')}</p>
+ </div>
+ </div>
+ </div>
+ <div class="card">
+ <h2>Crear escena</h2>
+ <label>Describe lo que ocurre</label>
+ <textarea id="prompt" placeholder="Describe detalladamente los movimientos, diálogos, expresiones, ambiente y cámara..."></textarea>
+ <label>Estilo</label>
+ <select id="style">
+ <option>Anime japonés 2D</option>
+ <option>Anime cinematográfico</option>
+ <option>Anime escolar</option>
+ <option>Anime acuarela</option>
+ <option>Anime retro</option>
+ </select>
+ <label>Duración</label>
+ <select id="duration">
+ <option>5 segundos</option>
+ <option selected>10 segundos</option>
+ <option>15 segundos</option>
+ <option>30 segundos</option>
+ <option>1 minuto</option>
+ </select>
+ <label>Referencia del lugar</label>
+ <input type="file" id="place" accept="image/*">
+ <div id="placepreview"></div>
+ <label>Referencia visual de la escena</label>
+ <input type="file" id="ref" accept="image/*">
+ <div id="refpreview"></div>
+ <button onclick="prepareScene()">Preparar escena</button>
+ <div id="status"></div>
+ </div>
+ <div class="card">
+ <h2>Mis escenas</h2>
+ <div id="scenes"></div>
+ </div>`;
+ previewUpload('place','placepreview');
+ previewUpload('ref','refpreview');
+ renderScenes();
+}
+
+async function prepareScene(){
+ const p=document.getElementById('prompt').value.trim();
+ if(!p){alert('Escribe las instrucciones de la escena.');return;}
+ const scene={
+  prompt:p,
+  style:document.getElementById('style').value,
+  duration:document.getElementById('duration').value,
+  place:await fileData(document.getElementById('place').files[0]),
+  ref:await fileData(document.getElementById('ref').files[0])
+ };
+ current.scenes.push(scene);
+ await store(current);
+ document.getElementById('status').innerHTML='<p>Escena guardada en tu proyecto.</p>';
+ document.getElementById('prompt').value='';
+ document.getElementById('place').value='';
+ document.getElementById('ref').value='';
+ document.getElementById('placepreview').innerHTML='';
+ document.getElementById('refpreview').innerHTML='';
+ renderScenes();
+}
+
+function renderScenes(){
+ const box=document.getElementById('scenes');
+ if(!box)return;
+ if(!current.scenes.length){
+  box.innerHTML='<p class="small">Todavía no has creado escenas.</p>';
+  return;
+ }
+ box.innerHTML=current.scenes.map((s,i)=>`
+ <div class="scene">
+ <h3>Escena ${i+1}</h3>
+ <p>${escapeHTML(s.prompt)}</p>
+ <p class="small">${escapeHTML(s.style)} · ${escapeHTML(s.duration)}</p>
+ ${s.place?'<img class="preview" src="'+s.place+'">':''}
+ ${s.ref?'<img class="preview" src="'+s.ref+'">':''}
+ </div>`).join('');
+}
+
+async function deleteProject(id){
+ if(confirm('¿Eliminar este proyecto?')){
+  await remove(id);
+  home();
+ }
+}
+
+function escapeHTML(s){
+ return String(s||'').replace(/[&<>"']/g,c=>({
+ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+ }[c]));
+}
+
+openDB().then(home).catch(()=>{
+ app.innerHTML='<div class="card"><h2>Error</h2><p>No se pudo abrir el almacenamiento del navegador.</p></div>';
+});
 </script>
 </body>
 </html>
