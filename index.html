@@ -112,15 +112,20 @@ function home(){
 
 async function listProjects(){
  const box=document.getElementById('projects');
+ if(!box)return;
+
  const projects=await getAll();
- if(!box||!projects.length)return;
+
  box.innerHTML='<div class="card"><h2>Mis proyectos</h2>'+
- projects.map(p=>`
- <div class="project">
- <h3>${esc(p.name)}</h3>
- <p>${esc(p.description)}</p>
- <button onclick="openProject('${p.id}')">Abrir proyecto</button>
- </div>`).join('')+'</div>';
+ (projects.length
+  ? projects.slice().reverse().map(p=>`
+   <div class="project">
+    <h3>${esc(p.name)}</h3>
+    <p>${esc(p.description)}</p>
+    <button onclick="openProject('${p.id}')">Continuar editando</button>
+   </div>`).join('')
+  : '<p class="small">Todavía no has creado proyectos.</p>'
+ )+'</div>';
 }
 
 function newProject(){
