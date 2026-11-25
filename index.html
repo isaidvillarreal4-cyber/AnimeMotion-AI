@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AnimeMotion AI</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0c1020;color:#fff;font-family:Arial,sans-serif}
+header{padding:22px;background:linear-gradient(120deg,#6d28d9,#db2777)}
+header h1{margin:0;font-size:26px}
+header p{margin:8px 0 0;color:#eee}
+main{max-width:850px;margin:auto;padding:20px}
+.card{background:#171c31;border:1px solid #303957;border-radius:18px;padding:20px;margin-bottom:18px}
+label{display:block;margin:15px 0 8px;font-weight:bold}
+textarea,select{width:100%;padding:14px;border-radius:12px;border:1px solid #384363;background:#10162a;color:white;font-size:15px}
+textarea{min-height:140px}
+button{width:100%;padding:15px;border:0;border-radius:12px;background:linear-gradient(90deg,#8b5cf6,#ec4899);color:white;font-size:16px;font-weight:bold;margin-top:18px}
+.small{color:#a5b4fc;font-size:13px}
+#status{margin-top:15px;white-space:pre-wrap;color:#c4b5fd}
+.nav{display:flex;gap:8px;margin-top:20px}
+.nav button{margin:0;background:#282d48}
+.scene{border:1px solid #414668;padding:15px;border-radius:14px;margin-top:12px}
+footer{text-align:center;padding:20px;color:#9ba8c7}
+</style>
+</head>
+<body>
+<header>
+<h1>AnimeMotion AI</h1>
+<p>Tu imaginación crea el anime.</p>
+<div class="nav">
+<button onclick="show('crear')">Crear</button>
+<button onclick="show('escenas')">Escenas</button>
+<button onclick="show('proyecto')">Proyecto</button>
+</div>
+</header>
+<main id="app"></main>
+<footer>AnimeMotion AI · Estudio de animación 2D</footer>
+<script>
+const app=document.getElementById('app');
+
+function show(page){
+if(page==='crear'){
+app.innerHTML=`
+<div class="card">
+<h2>Crear escena de anime</h2>
+<p class="small">Describe lo que quieres que suceda.</p>
+<label>Descripción</label>
+<textarea id="prompt" placeholder="Un estudiante sentado junto a la ventana, observa los árboles rosados..."></textarea>
+<label>Estilo</label>
+<select id="style">
+<option>Anime japonés 2D</option>
+<option>Anime cinematográfico</option>
+<option>Anime escolar</option>
+<option>Anime acuarela</option>
+<option>Anime retro</option>
+</select>
+<label>Duración</label>
+<select id="duration">
+<option>5 segundos</option>
+<option selected>10 segundos</option>
+<option>15 segundos</option>
+<option>30 segundos</option>
+<option>1 minuto</option>
+</select>
+<label>Imagen de referencia</label>
+<input id="image" type="file" accept="image/*">
+<button onclick="prepare()">Preparar escena</button>
+<div id="status"></div>
+</div>`;
+}
+else if(page==='escenas'){
+app.innerHTML=`
+<div class="card">
+<h2>Storyboard</h2>
+<div class="scene"><h3>Escena 1 · El salón</h3><p>El profesor explica mientras los estudiantes escuchan.</p><p class="small">10 segundos</p></div>
+<div class="scene"><h3>Escena 2 · La ventana</h3><p>El estudiante observa los árboles de flores rosadas.</p><p class="small">10 segundos</p></div>
+<div class="scene"><h3>Escena 3 · Un suspiro</h3><p>Apoya su cabeza en la mano y vuelve a mirar afuera.</p><p class="small">10 segundos</p></div>
+<button onclick="show('crear')">Crear otra escena</button>
+</div>`;
+}
+else{
+app.innerHTML=`
+<div class="card">
+<h2>Mi proyecto</h2>
+<div class="scene">
+<h3>Mi primer anime</h3>
+<p>Proyecto de animación 2D</p>
+<p class="small">Formato: 16:9</p>
+<p class="small">Estado: Proyecto inicial</p>
+</div>
+<button onclick="show('crear')">Continuar proyecto</button>
+</div>`;
+}
+}
+
+function prepare(){
+let p=document.getElementById('prompt').value.trim();
+let status=document.getElementById('status');
+if(!p){status.textContent='Escribe primero tu escena.';return;}
+status.textContent='Escena preparada\\n\\n'+p+
+'\\n\\nEstilo: '+document.getElementById('style').value+
+'\\nDuración: '+document.getElementById('duration').value+
+'\\n\\nEl motor de animación real se conectará posteriormente.';
+}
+show('crear');
+</script>
+</body>
+</html>
