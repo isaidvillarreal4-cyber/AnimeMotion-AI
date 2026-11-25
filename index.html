@@ -41,7 +41,7 @@ button{width:100%;padding:14px;border:0;border-radius:12px;background:#e477ad;co
 
 <script>
 const app=document.getElementById('app');
-let db,current=null,referenceFiles=[];
+let db,current=null,referenceFiles=[],backgroundFiles=[];
 
 function openDB(){
  return new Promise((resolve,reject)=>{
@@ -210,20 +210,32 @@ function workspace(){
  showTimeline();
 }
 
+
 function newScene(){
  referenceFiles=[];
+ backgroundFiles=[];
  app.innerHTML=`
  <div class="card">
  <button class="secondary" onclick="workspace()">← Volver al proyecto</button>
  <h2>Crear nueva escena</h2>
- <p class="small">Sube imágenes para mostrar exactamente cómo quieres que sea tu escena.</p>
 
- <label>Imágenes de referencia (1 obligatoria, máximo 3)</label>
+ <h3>Personajes del proyecto</h3>
+ <div class="refgrid">
+ <div class="refbox"><img src="${current.char1}"><p>${esc(current.charname1||'Personaje 1')}</p></div>
+ <div class="refbox"><img src="${current.char2}"><p>${esc(current.charname2||'Personaje 2')}</p></div>
+ </div>
+ <p class="small">Estas imágenes se conservarán como referencias de tus personajes.</p>
+
+ <label>Otras imágenes de referencia (máximo 3)</label>
  <input id="references" type="file" accept="image/*" multiple>
  <div class="refgrid" id="refpreview"></div>
 
+ <label>Imágenes del escenario (máximo 3)</label>
+ <input id="backgrounds" type="file" accept="image/*" multiple>
+ <div class="refgrid" id="backpreview"></div>
+
  <label>Describe lo que sucede en la escena</label>
- <textarea id="sceneDescription" placeholder="Explica qué personajes aparecen, dónde están, qué hacen, cómo se mueven, sus expresiones y todos los detalles que quieres conservar..."></textarea>
+ <textarea id="sceneDescription" placeholder="Describe los movimientos, expresiones, lugares y acciones de los personajes..."></textarea>
 
  <label>Duración de la escena</label>
  <select id="duration">
@@ -231,9 +243,10 @@ function newScene(){
  <option value="8" selected>8 segundos</option>
  <option value="10">10 segundos</option>
  <option value="15">15 segundos</option>
+ <option value="30">30 segundos</option>
  </select>
 
- <button onclick="addScene()">Agregar escena a la línea de tiempo</button>
+ <button onclick="addScene()">Guardar escena</button>
  <button class="secondary" onclick="workspace()">Cancelar</button>
  </div>`;
 
@@ -245,23 +258,39 @@ function newScene(){
    return;
   }
   referenceFiles=files;
-  const box=document.getElementById('refpreview');
-  box.innerHTML='';
-  for(const file of files){
-   const data=await fileData(file);
-   const item=document.createElement('div');
-   item.className='refbox';
-   const img=document.createElement('img');
-   img.src=data;
-   item.appendChild(img);
-   box.appendChild(item);
-  }
+  await previewFiles(files,'refpreview');
  };
+
+ document.getElementById('backgrounds').onchange=async e=>{
+  const files=Array.from(e.target.files);
+  if(files.length>3){
+   alert('Puedes seleccionar un máximo de 3 escenarios.');
+   e.target.value='';
+   return;
+  }
+  backgroundFiles=files;
+  await previewFiles(files,'backpreview');
+ };
+}
+
+async function previewFiles(files,boxId){
+ const box=document.getElementById(boxId);
+ box.innerHTML='';
+ for(const file of files){
+  const data=await fileData(file);
+  const item=document.createElement('div');
+  item.className='refbox';
+  const img=document.createElement('img');
+  img.src=data;
+  item.appendChild(img);
+  box.appendChild(item);
+ }
 }
 
 async function addScene(){
  const description=document.getElementById('sceneDescription').value.trim();
  const duration=document.getElementById('duration').value;
+
  if(referenceFiles.length===0){
   alert('Sube al menos una imagen de referencia.');
   return;
@@ -270,16 +299,26 @@ async function addScene(){
   alert('Describe lo que sucede en la escena.');
   return;
  }
+
  const refs=[];
+ const backgrounds=[];
+
  for(const file of referenceFiles){
   refs.push(await fileData(file));
  }
+ for(const file of backgroundFiles){
+  backgrounds.push(await fileData(file));
+ }
+
  current.scenes.push({
   id:Date.now().toString(),
   description,
   duration:Number(duration),
-  references:refs
+  references:refs,
+  backgrounds:backgrounds,
+  video:null
  });
+
  await save(current);
  workspace();
 }
