@@ -8,22 +8,28 @@
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#fff4fa;color:#493346;font-family:Arial,sans-serif}
-header{text-align:center;padding:35px 15px}
+header{text-align:center;padding:28px 12px}
 header h1{color:#d65b99;margin:0;font-size:30px}
-header p{color:#98778b}
-main{max-width:760px;margin:auto;padding:18px}
-.card{background:white;border:1px solid #f0d5e4;border-radius:20px;padding:22px;margin:16px 0;box-shadow:0 5px 18px #d65b9910}
+header p,.small{color:#98778b}
+main{max-width:760px;margin:auto;padding:15px}
+.card{background:white;border:1px solid #f0d5e4;border-radius:20px;padding:20px;margin:16px 0;box-shadow:0 5px 18px #d65b9910}
 h2,h3{color:#d65b99}
 label{display:block;margin:16px 0 8px;font-weight:bold}
-input,textarea{width:100%;padding:13px;border:1px solid #e8c4d8;border-radius:11px;background:#fffaff;color:#493346;font:inherit}
+input,textarea,select{width:100%;padding:13px;border:1px solid #e8c4d8;border-radius:11px;background:#fffaff;color:#493346;font:inherit}
 textarea{min-height:100px;resize:vertical}
-button{width:100%;padding:15px;border:0;border-radius:12px;background:#e477ad;color:white;font-weight:bold;font-size:16px;margin-top:15px}
+button{width:100%;padding:14px;border:0;border-radius:12px;background:#e477ad;color:white;font-weight:bold;font-size:15px;margin-top:12px}
 .secondary{background:#ad819b}
-.character{border:1px solid #f0d5e4;border-radius:15px;padding:15px;margin-top:16px}
+.danger{background:#bd667d}
+.character,.scene{border:1px solid #f0d5e4;border-radius:15px;padding:15px;margin-top:15px}
 .preview{width:100%;max-height:220px;object-fit:contain;margin-top:10px;border-radius:12px}
-.small{font-size:13px;color:#98778b}
-.hidden{display:none}
 .project{background:#fff0f7;padding:15px;border-radius:13px;margin-top:12px}
+.refgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.refbox{background:#fff0f7;border:1px dashed #dca4c1;border-radius:12px;padding:8px;min-height:85px;text-align:center}
+.refbox img{width:100%;height:85px;object-fit:contain}
+.small{font-size:13px}
+.timeline{border-left:3px solid #e477ad;padding-left:14px;margin:15px 0}
+.sceneitem{background:#fff0f7;border-radius:12px;padding:13px;margin-bottom:12px}
+.sceneitem img{width:100%;max-height:150px;object-fit:contain}
 </style>
 </head>
 <body>
@@ -35,13 +41,14 @@ button{width:100%;padding:15px;border:0;border-radius:12px;background:#e477ad;co
 
 <script>
 const app=document.getElementById('app');
-let db,current=null;
+let db,current=null,referenceFiles=[];
 
 function openDB(){
  return new Promise((resolve,reject)=>{
   const request=indexedDB.open('AnimeMotionProjects',1);
   request.onupgradeneeded=()=>{
-   request.result.createObjectStore('projects',{keyPath:'id'});
+   if(!request.result.objectStoreNames.contains('projects'))
+    request.result.createObjectStore('projects',{keyPath:'id'});
   };
   request.onsuccess=()=>{db=request.result;resolve()};
   request.onerror=()=>reject(request.error);
@@ -60,18 +67,18 @@ function save(data){
 function getAll(){
  return new Promise((resolve,reject)=>{
   const tx=db.transaction('projects','readonly');
-  const request=tx.objectStore('projects').getAll();
-  request.onsuccess=()=>resolve(request.result);
-  request.onerror=()=>reject(request.error);
+  const r=tx.objectStore('projects').getAll();
+  r.onsuccess=()=>resolve(r.result);
+  r.onerror=()=>reject(r.error);
  });
 }
 
 function getOne(id){
  return new Promise((resolve,reject)=>{
   const tx=db.transaction('projects','readonly');
-  const request=tx.objectStore('projects').get(id);
-  request.onsuccess=()=>resolve(request.result);
-  request.onerror=()=>reject(request.error);
+  const r=tx.objectStore('projects').get(id);
+  r.onsuccess=()=>resolve(r.result);
+  r.onerror=()=>reject(r.error);
  });
 }
 
@@ -83,10 +90,9 @@ function fileData(file){
   reader.onerror=()=>reject(reader.error);
   reader.readAsDataURL(file);
  });
-
 }
 
-function escapeHTML(value){
+function esc(value){
  return String(value||'').replace(/[&<>"']/g,c=>({
  '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
  }[c]));
@@ -95,9 +101,9 @@ function escapeHTML(value){
 function home(){
  current=null;
  app.innerHTML=`
- <div class="card" style="text-align:center;padding:35px">
+ <div class="card" style="text-align:center;padding:30px">
  <h2>Bienvenido a tu estudio de anime</h2>
- <p>Comienza creando tu propia historia.</p>
+ <p>Construye tu propia historia de anime 2D.</p>
  <button onclick="newProject()">＋ Crear nuevo proyecto</button>
  </div>
  <div id="projects"></div>`;
@@ -111,8 +117,8 @@ async function listProjects(){
  box.innerHTML='<div class="card"><h2>Mis proyectos</h2>'+
  projects.map(p=>`
  <div class="project">
- <h3>${escapeHTML(p.name)}</h3>
- <p>${escapeHTML(p.description)}</p>
+ <h3>${esc(p.name)}</h3>
+ <p>${esc(p.description)}</p>
  <button onclick="openProject('${p.id}')">Abrir proyecto</button>
  </div>`).join('')+'</div>';
 }
@@ -121,14 +127,10 @@ function newProject(){
  app.innerHTML=`
  <div class="card">
  <h2>Crear nuevo proyecto</h2>
- <p class="small">Configura tu nueva historia de anime.</p>
-
  <label>Nombre del proyecto</label>
- <input id="name" placeholder="Ejemplo: Malasancera">
-
- <label>Descripción corta del proyecto</label>
- <textarea id="description" placeholder="Describe brevemente de qué trata tu anime..."></textarea>
-
+ <input id="name" placeholder="Nombre de tu anime">
+ <label>Descripción de la historia</label>
+ <textarea id="description" placeholder="¿De qué tratará tu anime?"></textarea>
  <div class="character">
  <h3>Personajes principales</h3>
  <label>Imagen del personaje 1</label>
@@ -136,18 +138,15 @@ function newProject(){
  <div id="preview1"></div>
  <label>Nombre del personaje 1</label>
  <input id="name1" placeholder="Nombre del personaje">
-
  <label>Imagen del personaje 2</label>
  <input id="image2" type="file" accept="image/*">
  <div id="preview2"></div>
  <label>Nombre del personaje 2</label>
  <input id="name2" placeholder="Nombre del personaje">
  </div>
-
  <button onclick="createProject()">Crear proyecto</button>
  <button class="secondary" onclick="home()">Volver</button>
  </div>`;
-
  previewUpload('image1','preview1');
  previewUpload('image2','preview2');
 }
@@ -165,21 +164,16 @@ async function createProject(){
  const description=document.getElementById('description').value.trim();
  const f1=document.getElementById('image1').files[0];
  const f2=document.getElementById('image2').files[0];
-
- if(!name){alert('Escribe el nombre del proyecto.');return}
- if(!description){alert('Escribe una descripción corta.');return}
+ if(!name||!description){alert('Completa el nombre y la descripción.');return}
  if(!f1||!f2){alert('Selecciona las imágenes de los dos personajes.');return}
-
  const project={
-  id:Date.now().toString(),
-  name,description,
+  id:Date.now().toString(),name,description,
   char1:await fileData(f1),
   charname1:document.getElementById('name1').value.trim(),
   char2:await fileData(f2),
   charname2:document.getElementById('name2').value.trim(),
   scenes:[]
  };
-
  await save(project);
  openProject(project.id);
 }
@@ -187,20 +181,130 @@ async function createProject(){
 async function openProject(id){
  current=await getOne(id);
  if(!current)return;
+ if(!current.scenes)current.scenes=[];
+ workspace();
+}
 
+function workspace(){
  app.innerHTML=`
  <div class="card">
- <button class="secondary" onclick="home()">Volver a mis proyectos</button>
- <h2>${escapeHTML(current.name)}</h2>
- <p>${escapeHTML(current.description)}</p>
+ <button class="secondary" onclick="home()">← Volver a mis proyectos</button>
+ <h2>${esc(current.name)}</h2>
+ <p>${esc(current.description)}</p>
  <h3>Personajes principales</h3>
+ <div class="character">
  <img class="preview" src="${current.char1}">
- <p>${escapeHTML(current.charname1||'Personaje 1')}</p>
+ <p>${esc(current.charname1||'Personaje 1')}</p>
  <img class="preview" src="${current.char2}">
- <p>${escapeHTML(current.charname2||'Personaje 2')}</p>
- <h3>Espacio de trabajo</h3>
- <p class="small">Tu proyecto está creado. Aquí construiremos las herramientas para diseñar y animar tus escenas.</p>
+ <p>${esc(current.charname2||'Personaje 2')}</p>
+ </div>
+ <button onclick="newScene()">＋ Crear nueva escena</button>
+ <h3>🎬 Línea de tiempo del episodio</h3>
+ <div id="timeline"></div>
  </div>`;
+ showTimeline();
+}
+
+function newScene(){
+ referenceFiles=[];
+ app.innerHTML=`
+ <div class="card">
+ <button class="secondary" onclick="workspace()">← Volver al proyecto</button>
+ <h2>Crear nueva escena</h2>
+ <p class="small">Sube imágenes para mostrar exactamente cómo quieres que sea tu escena.</p>
+
+ <label>Imágenes de referencia (1 obligatoria, máximo 3)</label>
+ <input id="references" type="file" accept="image/*" multiple>
+ <div class="refgrid" id="refpreview"></div>
+
+ <label>Describe lo que sucede en la escena</label>
+ <textarea id="sceneDescription" placeholder="Explica qué personajes aparecen, dónde están, qué hacen, cómo se mueven, sus expresiones y todos los detalles que quieres conservar..."></textarea>
+
+ <label>Duración de la escena</label>
+ <select id="duration">
+ <option value="5">5 segundos</option>
+ <option value="8" selected>8 segundos</option>
+ <option value="10">10 segundos</option>
+ <option value="15">15 segundos</option>
+ </select>
+
+ <button onclick="addScene()">Agregar escena a la línea de tiempo</button>
+ <button class="secondary" onclick="workspace()">Cancelar</button>
+ </div>`;
+
+ document.getElementById('references').onchange=async e=>{
+  const files=Array.from(e.target.files);
+  if(files.length>3){
+   alert('Puedes seleccionar un máximo de 3 imágenes.');
+   e.target.value='';
+   return;
+  }
+  referenceFiles=files;
+  const box=document.getElementById('refpreview');
+  box.innerHTML='';
+  for(const file of files){
+   const data=await fileData(file);
+   const item=document.createElement('div');
+   item.className='refbox';
+   const img=document.createElement('img');
+   img.src=data;
+   item.appendChild(img);
+   box.appendChild(item);
+  }
+ };
+}
+
+async function addScene(){
+ const description=document.getElementById('sceneDescription').value.trim();
+ const duration=document.getElementById('duration').value;
+ if(referenceFiles.length===0){
+  alert('Sube al menos una imagen de referencia.');
+  return;
+ }
+ if(!description){
+  alert('Describe lo que sucede en la escena.');
+  return;
+ }
+ const refs=[];
+ for(const file of referenceFiles){
+  refs.push(await fileData(file));
+ }
+ current.scenes.push({
+  id:Date.now().toString(),
+  description,
+  duration:Number(duration),
+  references:refs
+ });
+ await save(current);
+ workspace();
+}
+
+function showTimeline(){
+ const box=document.getElementById('timeline');
+ if(!box)return;
+ if(!current.scenes.length){
+  box.innerHTML='<p class="small">Todavía no has agregado escenas.</p>';
+  return;
+ }
+ box.innerHTML='<div class="timeline">'+
+ current.scenes.map((s,i)=>`
+ <div class="sceneitem">
+ <h3>Escena ${i+1}</h3>
+ <p>${esc(s.description)}</p>
+ <p class="small">Duración: ${s.duration} segundos</p>
+ <div class="refgrid">
+ ${(s.references||[]).map(img=>`<img src="${img}">`).join('')}
+ </div>
+ <button class="danger" onclick="deleteScene('${s.id}')">Eliminar escena</button>
+ </div>`).join('')+'</div>'+
+ '<h3>Duración total: '+current.scenes.reduce((n,s)=>n+Number(s.duration),0)+' segundos</h3>';
+}
+
+async function deleteScene(id){
+ if(!confirm('¿Quieres eliminar esta escena?'))return;
+ current.scenes=current.scenes.filter(s=>s.id!==id);
+ await save(current);
+ workspace();
 }
 
 openDB().then(home).catch(()=>{
