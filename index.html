@@ -219,12 +219,22 @@ function newScene(){
  <button class="secondary" onclick="workspace()">← Volver al proyecto</button>
  <h2>Crear nueva escena</h2>
 
- <h3>Personajes del proyecto</h3>
+ <h3>¿Qué personajes aparecerán en esta escena?</h3>
+ <p class="small">Selecciona uno o los dos personajes.</p>
  <div class="refgrid">
- <div class="refbox"><img src="${current.char1}"><p>${esc(current.charname1||'Personaje 1')}</p></div>
- <div class="refbox"><img src="${current.char2}"><p>${esc(current.charname2||'Personaje 2')}</p></div>
+ <label class="refbox">
+ <input type="checkbox" id="useChar1" checked>
+ <img src="${current.char1}">
+ <p>${esc(current.charname1||'Protagonista')}</p>
+ </label>
+ <label class="refbox">
+ <input type="checkbox" id="useChar2">
+ <img src="${current.char2}">
+ <p>${esc(current.charname2||'Protagonista mujer')}</p>
+ </label>
  </div>
- <p class="small">Estas imágenes se conservarán como referencias de tus personajes.</p>
+ <button type="button" class="secondary" onclick="document.getElementById('useChar1').checked=true;document.getElementById('useChar2').checked=true;">Seleccionar ambos</button>
+ <p class="small">Las imágenes de los personajes seleccionados se usarán como referencias.</p>
 
  <label>Otras imágenes de referencia (máximo 3)</label>
  <input id="references" type="file" accept="image/*" multiple>
@@ -300,6 +310,15 @@ async function addScene(){
   return;
  }
 
+ const selectedCharacters=[];
+ if(document.getElementById('useChar1').checked) selectedCharacters.push('char1');
+ if(document.getElementById('useChar2').checked) selectedCharacters.push('char2');
+
+ if(selectedCharacters.length===0){
+  alert('Selecciona al menos un personaje.');
+  return;
+ }
+
  const refs=[];
  const backgrounds=[];
 
@@ -314,6 +333,7 @@ async function addScene(){
   id:Date.now().toString(),
   description,
   duration:Number(duration),
+  characters:selectedCharacters,
   references:refs,
   backgrounds:backgrounds,
   video:null
